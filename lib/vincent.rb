@@ -29,7 +29,7 @@ module Vincent
 			begin
 				JSON.parse(data)
 			rescue 
-				puts "could not parse #{data}" #handel this better
+        # log error
 				{}
 			end
 		end
@@ -39,8 +39,6 @@ module Vincent
 		extend Core
 	end
 end
-
-# Thread.new { EM.run { } }
 
 config = URI.parse(ENV['AMQP_URI'] || 'amqp://guest:guest@localhost/')
 AMQP.settings.merge!(

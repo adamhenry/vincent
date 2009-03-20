@@ -1,16 +1,11 @@
 require 'vincent/base'
 
 module Vincent
-
 	class Server
-
 		extend Core
-
-    ## hand signal handler here
 
 		def self.start(&block)
 			EM.run { 
-
 				Signal.trap('INT') { AMQP.stop{ EM.stop } }
 				Signal.trap('TERM'){ AMQP.stop{ EM.stop } }
 
@@ -21,8 +16,6 @@ module Vincent
 				}.resume
 			}
 		end
-
 	end
-
 end
 
