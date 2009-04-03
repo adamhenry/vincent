@@ -1,5 +1,4 @@
-
-require 'vincent'
+require 'lib/vincent'
 require 'fiber'
 
 ### TODO
@@ -31,7 +30,12 @@ module Vincent
       f = Fiber.current
       subscribe(q) do |result|
         ## maybe we can destroy the queue here - unsubscribe - autodelete
+        begin
         f.resume(result)
+        rescue Execption => e
+          puts "got execpiton e{#{e}}."
+          raise e
+        end
       end
       yield
       Fiber.yield
@@ -71,8 +75,9 @@ module Vincent
         rescue RejectMessage
           info.reject
           next
-        rescue Object => e
+        rescue Exception => e
           puts "got exception #{e} - packing it for return"
+          puts e.backtrace.join("\n")
           ## just display the exception if there's not reply_to
           results = { :exception => pack(e) } 
         end
@@ -192,7 +197,6 @@ module Vincent
     def handle_cast
       raise MissingCastHandler
     end
-
   end
 end
 
