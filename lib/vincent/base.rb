@@ -16,26 +16,45 @@ module Vincent
   class MissingCastHandler < RuntimeError ; end
 
   module Core
+  
     def call(key, args = {})
       args['reply_to'] = "reply_to.#{rand 99_999_999}"
-      reply = receive(args['reply_to']) do
-        cast(key, args)
+      fiber = Fiber.current 
+      subscribe(args['reply_to']) do |result|
+        fiber.resume(result)
       end
+      cast(key, args)
+      reply = Fiber.yield
       raise unpack(reply["exception"]) if reply["exception"]
       return unpack(reply["results"]) if reply["results"]
       return reply
+
+    #  args['reply_to'] = "reply_to.#{rand 99_999_999}"
+    #  fiber = Fiber.new do
+    #    subscribe(args['reply_to']) do |result|
+    #      fiber.resume(result)
+    #    end
+    #    cast(key, args)
+    #    reply = Fiber.yield
+    #    raise unpack(reply["exception"]) if reply["exception"]
+    #    return unpack(reply["results"]) if reply["results"]
+    #    return reply
+    #  end .resume
+
+    #  args['reply_to'] = "reply_to.#{rand 99_999_999}"
+    #  reply = receive(args['reply_to']) do
+    #    cast(key, args)
+    #  end
+    #  raise unpack(reply["exception"]) if reply and reply["exception"]
+    #  return unpack(reply["results"]) if reply and reply["results"]
+    #  return reply
     end
 
     def receive(q)
       f = Fiber.current
       subscribe(q) do |result|
         ## maybe we can destroy the queue here - unsubscribe - autodelete
-        begin
         f.resume(result)
-        rescue Execption => e
-          puts "got execpiton e{#{e}}."
-          raise e
-        end
       end
       yield
       Fiber.yield
@@ -46,9 +65,11 @@ module Vincent
       q ||= "q.#{ENV['HOSTNAME']}" 
 
       bind(q, key)
-      subscribe(q) do |args|
-        block.call(Vincent::Base.new(args, args))
-      end
+      Fiber.new do
+        subscribe(q) do |args|
+          block.call(Vincent::Base.new(args, args))
+        end
+      end .resume
     end
 
     def bind(q, key)
@@ -183,11 +204,13 @@ module Vincent
     end
 
     def handle
-      if params['reply_to']
-        handle_call
-      else
-        handle_cast
-      end
+      Fiber.new do
+        if params['reply_to']
+          handle_call
+        else
+          handle_cast
+        end
+      end .resume
     end
 
     def handle_call

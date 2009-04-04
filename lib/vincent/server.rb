@@ -9,16 +9,11 @@ module Vincent
         Signal.trap('INT')  { stop }
         Signal.trap('TERM') { stop }
 
-        begin
         Fiber.new {
           Vincent::Routes.bind
           EM.add_periodic_timer(60) { Vincent::Routes.check }
           block.call(Vincent::Server) if block
         }.resume
-        rescue Exception => e
-          puts "got execpiton e{#{e}}."
-          raise e
-        end
       }
     end
 
