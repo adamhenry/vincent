@@ -10,13 +10,11 @@ require 'fiber'
 ### autodelete queues?
 
 module Vincent
-
   class RejectMessage < RuntimeError ; end
   class MissingCallHandler < RuntimeError ; end
   class MissingCastHandler < RuntimeError ; end
 
   module Core
-  
     def call(key, args = {})
       args['reply_to'] = "reply_to.#{rand 99_999_999}"
       fiber = Fiber.current 
@@ -28,36 +26,6 @@ module Vincent
       raise unpack(reply["exception"]) if reply["exception"]
       return unpack(reply["results"]) if reply["results"]
       return reply
-
-    #  args['reply_to'] = "reply_to.#{rand 99_999_999}"
-    #  fiber = Fiber.new do
-    #    subscribe(args['reply_to']) do |result|
-    #      fiber.resume(result)
-    #    end
-    #    cast(key, args)
-    #    reply = Fiber.yield
-    #    raise unpack(reply["exception"]) if reply["exception"]
-    #    return unpack(reply["results"]) if reply["results"]
-    #    return reply
-    #  end .resume
-
-    #  args['reply_to'] = "reply_to.#{rand 99_999_999}"
-    #  reply = receive(args['reply_to']) do
-    #    cast(key, args)
-    #  end
-    #  raise unpack(reply["exception"]) if reply and reply["exception"]
-    #  return unpack(reply["results"]) if reply and reply["results"]
-    #  return reply
-    end
-
-    def receive(q)
-      f = Fiber.current
-      subscribe(q) do |result|
-        ## maybe we can destroy the queue here - unsubscribe - autodelete
-        f.resume(result)
-      end
-      yield
-      Fiber.yield
     end
 
     def listen4(key, options = {}, &block)
@@ -90,7 +58,6 @@ module Vincent
           info.ack
           return
         end
-
         begin
           results = block.call(args)
         rescue RejectMessage
@@ -98,11 +65,9 @@ module Vincent
           next
         rescue Exception => e
           puts "got exception #{e} - packing it for return"
-          puts e.backtrace.join("\n")
           ## just display the exception if there's not reply_to
           results = { :exception => pack(e) } 
         end
-
         results = { :results => pack(results) } unless results.is_a?(Hash)
         MQ.queue(args['reply_to']).publish(encode(results)) if args['reply_to']
         info.ack

@@ -3,7 +3,6 @@ require 'uri'
 require 'json'
 
 module Vincent
-
   def self.method_missing(method,data = {})
     key = method.to_s.gsub(/_/,".")
     Vincent::Client.cast(key,data)
