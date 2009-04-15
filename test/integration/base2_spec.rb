@@ -8,7 +8,7 @@ require 'lib/vincent/server'
 module Vincent
   describe Vincent do
     context "Base" do
-      context "listen4" do
+      context "call" do
         it "should rase and error from inside the block" do
           Vincent::Server.start do |v|
             begin

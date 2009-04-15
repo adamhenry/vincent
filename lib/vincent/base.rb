@@ -1,5 +1,7 @@
 require 'lib/vincent'
 require 'fiber'
+require 'socket'
+require 'neverblock'
 
 ### TODO
 
@@ -30,14 +32,14 @@ module Vincent
 
     def listen4(key, options = {}, &block)
       q = options[:queue]
-      q ||= "q.#{ENV['HOSTNAME']}" 
+      q ||= "q.#{key}.#{Socket.gethostname}" 
 
       bind(q, key)
       Fiber.new do
         subscribe(q) do |args|
           block.call(Vincent::Base.new(args, args))
         end
-      end .resume
+      end.resume
     end
 
     def bind(q, key)
@@ -108,10 +110,17 @@ module Vincent
   module Routes
     def bind_to(key, options = {})
       key = key.to_s
-      q = "q.#{key}" if options[:route_to] == :one 
-      q = "q.#{ENV['HOSTNAME']}" if options[:route_to] == :host 
-      q = "q.#{rand 9_999_999}" if options[:route_to] == :all
-      raise "route_to => :one, :all or :host" unless q
+
+      case options[:route_to]
+      when :one
+        q = "q.#{key}" 
+      when :host
+        q = "q.#{key}.#{Socket.gethostname}" 
+      when :all
+        q = "q.#{key}.#{Socket.gethostname}.#{Process.pid}" 
+      else
+        raise "route_to => :one, :all or :host" 
+      end
 
       active = options[:active]
       active ||= :active
